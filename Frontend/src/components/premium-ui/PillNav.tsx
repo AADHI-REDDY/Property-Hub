@@ -17,7 +17,7 @@ export interface PillNavProps {
   ease?: string;
   baseColor?: string;
   pillColor?: string;
-  sliderColor?: string; // ✅ Added
+  sliderColor?: string;
   hoveredPillTextColor?: string;
   pillTextColor?: string;
   onMobileMenuClick?: () => void;
@@ -32,7 +32,7 @@ const PillNav: React.FC<PillNavProps> = ({
   ease = 'power3.easeOut',
   baseColor = '#ffffff',
   pillColor = 'transparent',
-  sliderColor = '#10b981', // ✅ Default Emerald Color
+  sliderColor = '#10b981', // Default green
   hoveredPillTextColor = '#ffffff',
   pillTextColor = '#1e293b',
   onMobileMenuClick,
@@ -54,7 +54,6 @@ const PillNav: React.FC<PillNavProps> = ({
         const rect = pill.getBoundingClientRect();
         const { width: w, height: h } = rect;
 
-        // Calculate radius to cover the whole pill
         const R = ((w * w) / 4 + h * h) / (2 * h);
         const D = Math.ceil(2 * R) + 2;
         const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (w * w) / 4))) + 1;
@@ -149,13 +148,10 @@ const PillNav: React.FC<PillNavProps> = ({
   return (
     <div className="pill-nav-container" style={cssVars}>
       <nav className={`pill-nav ${className}`} aria-label="Primary">
-        
-        {/* Logo Section */}
         <div className="pill-logo">
            {logo}
         </div>
 
-        {/* Desktop Menu */}
         <div className="pill-nav-items desktop-only" ref={navItemsRef}>
           <ul className="pill-list">
             {items.map((item, i) => (
@@ -165,9 +161,7 @@ const PillNav: React.FC<PillNavProps> = ({
                        className={`pill ${activeHref === item.href ? 'is-active' : ''}`}
                        onMouseEnter={() => handleEnter(i)}
                        onMouseLeave={() => handleLeave(i)}>
-                        {/* Background Animation Circle */}
                         <span className="hover-circle" ref={el => { circleRefs.current[i] = el; }} />
-                        {/* Text Stack */}
                         <span className="label-stack">
                             <span className="pill-label">{item.label}</span>
                             <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
@@ -190,7 +184,6 @@ const PillNav: React.FC<PillNavProps> = ({
           </ul>
         </div>
 
-        {/* Mobile Toggle */}
         <button 
           className={`mobile-menu-button mobile-only ${isMobileMenuOpen ? 'open' : ''}`}
           onClick={toggleMobileMenu}
@@ -200,7 +193,6 @@ const PillNav: React.FC<PillNavProps> = ({
         </button>
       </nav>
 
-      {/* Mobile Menu Dropdown */}
       <div className={`mobile-menu-popover ${isMobileMenuOpen ? 'is-open' : ''}`}>
         <ul className="mobile-menu-list">
           {items.map(item => (
