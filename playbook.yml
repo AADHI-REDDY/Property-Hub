@@ -1,0 +1,153 @@
+---
+- name: Fullstack build, image and k8s deploy
+  hosts: local
+  connection: local
+  gather_facts: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Show brief header
+      debug:
+        msg: "Running fullstack build+docker+k8s deployment on {{ inventory_hostname }}"
+
+    # --------------------
+    # Backend build
+    # --------------------
+    - name: Ensure backend folder exists
+      stat:
+        path: "{{ backend_dir }}"
+      register: backend_stat
+
+    - name: Build backend with Maven
+      when: backend_stat.stat.exists
+      shell: |
+        cd "{{ backend_dir }}"
+        mvn -B -DskipTests package
+      args:
+        chdir: "{{ backend_dir }}"
+      register: backend_build
+      changed_when: "'BUILD SUCCESS' in backend_build.stdout"
+      ignore_errors: false
+
+    # --------------------
+    # Backend Docker build
+    # --------------------
+    - name: Build backend Docker image
+      shell: |
+        cd "{{ backend_dir }}"
+        docker build -t {{ backend_image }} .
+      args:
+        chdir: "{{ backend_dir }}"
+      register: backend_docker_build
+      changed_when: "'Successfully' in backend_docker_build.stdout or backend_docker_build.rc == 0"
+
+    # --------------------
+    # Frontend build (Vite)
+    # --------------------
+    - name: Ensure frontend folder exists
+      stat:
+        path: "{{ frontend_dir }}"
+      register: frontend_stat
+
+    - name: Build frontend (npm install + build)
+      when: frontend_stat.stat.exists
+      shell: |
+        cd "{{ frontend_dir }}"
+        npm install --no-audit --no-fund
+        npm run build
+      args:
+        chdir: "{{ frontend_dir }}"
+      register: frontend_build
+      changed_when: "'built' in frontend_build.stdout or frontend_build.rc == 0"
+      ignore_errors: false
+
+    # --------------------
+    # Frontend Docker build
+    # --------------------
+    - name: Build frontend Docker image
+      shell: |
+        cd "{{ frontend_dir }}"
+        docker build -t {{ frontend_image }} .
+      args:
+        chdir: "{{ frontend_dir }}"
+      register: frontend_docker_build
+      changed_when: "'Successfully' in frontend_docker_build.stdout or frontend_docker_build.rc == 0"
+
+    # --------------------
+    # Optional: Docker login & push (if configured)
+    # --------------------
+    - name: Log in to Docker Hub (if docker_push true)
+      when: docker_push | bool
+      shell: |
+        echo "{{ dockerhub_pass }}" | docker login -u "{{ dockerhub_user }}" --password-stdin
+      register: docker_login
+      changed_when: "'Login Succeeded' in docker_login.stdout"
+      ignore_errors: false
+
+    - name: Push backend image to registry (optional)
+      when: docker_push | bool
+      shell: docker push {{ backend_image }}
+
+    - name: Push frontend image to registry (optional)
+      when: docker_push | bool
+      shell: docker push {{ frontend_image }}
+
+    # --------------------
+    # Create k8s directory if missing (playbook assumes manifests in k8s/)
+    # --------------------
+    - name: Fail if k8s directory missing
+      stat:
+        path: "{{ k8s_dir }}"
+      register: k8s_stat
+
+    - name: Abort if k8s manifests missing
+      fail:
+        msg: "k8s directory not found or empty. Ensure k8s manifests exist at {{ k8s_dir }}/"
+      when: not k8s_stat.stat.exists
+
+    # --------------------
+    # Apply k8s manifests
+    # --------------------
+    - name: Apply Kubernetes manifests
+      shell: |
+        kubectl apply -f "{{ k8s_dir }}/" -n {{ k8s_namespace }}
+      register: kubectl_apply
+      changed_when: "'configured' in kubectl_apply.stdout or 'created' in kubectl_apply.stdout"
+
+    - name: Wait for deployments to be ready (small wait)
+      shell: |
+        kubectl rollout status deployment/hms-backend -n {{ k8s_namespace }} --timeout=60s || true
+        kubectl rollout status deployment/nginx -n {{ k8s_namespace }} --timeout=60s || true
+      register: rollout_status
+      failed_when: false
+
+    - name: Show pods status
+      shell: kubectl get pods -o wide -n {{ k8s_namespace }}
+      register: pods
+    - debug:
+        var: pods.stdout_lines
+
+    # --------------------
+    # Start port-forwards (only if connection is local)
+    # --------------------
+    - name: Start frontend port-forward in background (local only)
+      when: ansible_connection == "local"
+      shell: start "" kubectl port-forward svc/nginx {{ frontend_host_port }}:80
+      async: 1
+      poll: 0
+      ignore_errors: yes
+
+    - name: Start backend port-forward in background (local only)
+      when: ansible_connection == "local"
+      shell: start "" kubectl port-forward svc/hms-backend-svc {{ backend_host_port }}:8081
+      async: 1
+      poll: 0
+      ignore_errors: yes
+
+    - name: Final message
+      debug:
+        msg: |
+          Deployment complete.
+          Frontend should be available at http://localhost:{{ frontend_host_port }}
+          Backend port-forward at http://localhost:{{ backend_host_port }} (may return 404 at / but proves connectivity).

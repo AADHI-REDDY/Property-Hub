@@ -8,13 +8,14 @@ import {
   LoginResponse,
   CreateTenantRequest,
   Property,
-  PropertyRequest, // Import the corrected type
+  PropertyRequest,
   Lease,
   Payment
 } from '../types';
 
 // --- Base Configuration ---
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Vercel will use VITE_API_BASE_URL. Localhost will fallback to http://localhost:8080
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -54,7 +55,7 @@ apiClient.interceptors.response.use(
 
 /**
  * ====================================================
- * AUTH API Calls (/api/auth/...)
+ * AUTH API Calls
  * ====================================================
  */
 export const apiLogin = (credentials: LoginPayload): Promise<LoginResponse> =>
@@ -68,10 +69,9 @@ export const apiGetCurrentUser = (): Promise<User> =>
 
 /**
  * ====================================================
- * PROPERTIES API Calls (/api/properties/...)
+ * PROPERTIES API Calls
  * ====================================================
  */
-// ✅ Exporting the object
 export const propertiesAPI = {
   getAll: (): Promise<Property[]> => apiClient.get<Property[]>('/properties').then(res => res.data),
   
@@ -93,7 +93,6 @@ export const propertiesAPI = {
   getAvailable: (): Promise<Property[]> => 
     apiClient.get<Property[]>('/properties/available').then(res => res.data),
     
-  // Add the image upload function
   uploadImages: (propertyId: string | number, files: File[]): Promise<string[]> => {
     const formData = new FormData();
     files.forEach(file => {
@@ -107,35 +106,19 @@ export const propertiesAPI = {
 
 /**
  * ====================================================
- * USERS API Calls (/api/users/...)
+ * USERS & LEASES API Calls
  * ====================================================
  */
 export const apiGetTenants = (): Promise<User[]> =>
   apiClient.get<User[]>('/users/tenants').then(res => res.data);
 
-/**
- * ====================================================
- * LEASES API Calls (/api/leases/...)
- * ====================================================
- */
 export const apiGetAllLeases = (): Promise<Lease[]> =>
   apiClient.get<Lease[]>('/leases').then(res => res.data);
 
-/**
- * ====================================================
- * PAYMENTS API Calls (/api/payments/...)
- * ====================================================
- */
 export const apiGetAllPayments = (): Promise<Payment[]> =>
   apiClient.get<Payment[]>('/payments').then(res => res.data);
 
-/**
- * ====================================================
- * ADMIN API Calls (/api/admin/...)
- * ====================================================
- */
 export const apiCreateTenantByAdmin = (tenantData: CreateTenantRequest): Promise<User> =>
   apiClient.post<User>('/admin/tenants', tenantData).then(res => res.data);
 
-// Export for AddTenantModal
 export const createTenant = apiCreateTenantByAdmin;

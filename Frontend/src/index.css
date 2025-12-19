@@ -1,34 +1,162 @@
+/* Import Poppins - The font from your screenshot */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar */
+@layer base {
+  html {
+    font-family: 'Poppins', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* AUTOMATIC FIX: This makes headings bold by default to break the "same style" look */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.02em; /* Makes big text look tighter and more professional */
+  }
+  
+  p {
+    font-weight: 400;
+    color: #4b5563; /* Softens body text so it doesn't compete with headings */
+  }
+}@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- 1. Global Reset & Fonts --- */
+body {
+  @apply bg-stone-50 text-stone-900; /* Warmer background (Stone vs Slate) */
+  font-family: 'Inter', -apple-system, sans-serif;
+  overflow-x: hidden; /* Prevent horizontal scrollbars from animations */
+}
+
+/* --- 2. Professional Scrollbar (Teal themed) --- */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #0d9488; /* teal-600 */
 }
 
-/* Smooth transitions */
-* {
-  transition: all 0.2s ease-in-out;
-}
-
-/* Focus styles */
-button:focus,
-input:focus,
-select:focus {
-  outline: 2px solid #3b82f6;
+/* --- 3. Focus Rings (Teal instead of Blue) --- */
+*:focus-visible {
+  outline: 2px solid #0d9488;
   outline-offset: 2px;
 }
+
+/* --- 4. Utilities Layer (Animation Delays) --- */
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+
+/* --- 5. Animations --- */
+
+/* Fade In */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Blob Animation (Background Mesh) */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob {
+  animation: blob 10s infinite;
+}
+
+/* Gradient Text Shimmer */
+@keyframes gradient-x {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}
+/* Add to src/index.css if missing */
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-blob {
+  animation: blob 10s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+/* src/index.css */
+
+/* ... existing keyframes ... */
+
+@keyframes aurora-spin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.1); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.animate-aurora-spin {
+  animation: aurora-spin 20s linear infinite;
+}
+/* src/index.css */
+
+@keyframes aurora-flow-1 {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  33% { transform: translate(10%, 10%) rotate(5deg) scale(1.1); }
+  66% { transform: translate(-5%, 5%) rotate(-5deg) scale(0.9); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+}
+
+@keyframes aurora-flow-2 {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
+  33% { transform: translate(-10%, -5%) rotate(-5deg) scale(1); }
+  66% { transform: translate(5%, 10%) rotate(5deg) scale(1.2); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1.1); }
+}
+
+@keyframes aurora-flow-3 {
+  0% { transform: translate(0, 0) rotate(0deg) scale(0.9); }
+  33% { transform: translate(5%, -10%) rotate(3deg) scale(1.1); }
+  66% { transform: translate(-10%, 5%) rotate(-3deg) scale(1); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(0.9); }
+}
+
+.animate-aurora-1 { animation: aurora-flow-1 20s ease-in-out infinite alternate; }
+.animate-aurora-2 { animation: aurora-flow-2 25s ease-in-out infinite alternate; }
+.animate-aurora-3 { animation: aurora-flow-3 30s ease-in-out infinite alternate; }

@@ -1,31 +1,46 @@
+// src/components/auth/SignupForm.tsx
+
 import React, { useState } from 'react';
-import { UserPlus, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext'; // Make sure AuthContext signup function expects the correct payload
+import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { 
+  User, Mail, Lock, Eye, EyeOff, Phone, 
+  Building, Image as ImageIcon, Loader2, ArrowRight, AlertCircle 
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface SignupFormProps {
   onToggleForm: () => void;
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({ onToggleForm }) => {
+  // --- EXISTING LOGIC ---
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'tenant' as 'landlord' | 'tenant', // This determines which role name is sent
-    phone: '', // Added phone field to state
+    role: 'tenant' as 'landlord' | 'tenant',
+    phone: '',
     profileImage: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
-  const { signup, loading } = useAuth(); // Assuming signup function in AuthContext is updated
+  const { signup, loading } = useAuth();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
+    if (error) setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // --- Frontend Validations ---
+    // Validations
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -35,241 +50,240 @@ const SignupForm: React.FC<SignupFormProps> = ({ onToggleForm }) => {
       return;
     }
 
-    // --- Construct the Payload for the Backend ---
+    // Payload Construction
     const signupPayload = {
       name: formData.name,
       email: formData.email,
       password: formData.password,
-      phone: formData.phone || '', // Send phone, default to empty string if not entered
+      phone: formData.phone || '',
       profileImage: formData.profileImage || '',
-      // Convert singular role to plural 'roles' array with prefix and uppercase
-      roles: [`ROLE_${formData.role.toUpperCase()}`] // e.g., ["ROLE_LANDLORD"] or ["ROLE_TENANT"]
+      roles: [`ROLE_${formData.role.toUpperCase()}`] 
     };
 
     try {
-      // Pass the corrected payload to your signup function from AuthContext
-      // Make sure the signup function in AuthContext expects this structure
       await signup(signupPayload);
-
-      // Optionally: Redirect or show success message after signup
-      // onToggleForm(); // Maybe switch back to login form on success?
-
-    } catch (err) {
-      console.error("Signup error details:", err); // Log the full error
-      // Try to get a more specific error message if the backend sends one
-      const errorMessage = (err instanceof Error && (err as any).response?.data?.message)
-                           ? (err as any).response.data.message
-                           : 'Failed to create account. Email might already be in use.';
+    } catch (err: any) {
+      console.error("Signup error details:", err);
+      const errorMessage = err.response?.data?.message || 'Failed to create account.';
       setError(errorMessage);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+  // --- ANIMATION VARIANTS (Teal Theme) ---
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1, 
+      transition: { staggerChildren: 0.05 } 
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 10 }, 
+    visible: { opacity: 1, y: 0 }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-        <p className="text-gray-600 mt-2">Join our property management platform</p>
+    <div className="w-full">
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-stone-900 tracking-tight">Create Account</h2>
+        <p className="text-stone-500 mt-2">Join our property management platform.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-            {error}
-          </div>
-        )}
+      <motion.form 
+        onSubmit={handleSubmit} 
+        className="space-y-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Error Message */}
+        <AnimatePresence mode="wait">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, scale: 0.95 }}
+              animate={{ opacity: 1, height: 'auto', scale: 1 }}
+              exit={{ opacity: 0, height: 0, scale: 0.95 }}
+              className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 text-sm flex items-center gap-2 rounded-r-md"
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <p>{error}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* --- Name Input --- */}
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        {/* Full Name */}
+        <motion.div variants={itemVariants} className="space-y-1">
+          <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Full Name</label>
+          <div className="relative group">
+            <User className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
             <input
               type="text"
-              id="name"
               name="name"
               value={formData.name}
               onChange={handleChange}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your full name"
               required
+              className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+              placeholder="John Doe"
             />
           </div>
-        </div>
+        </motion.div>
 
-        {/* --- Email Input --- */}
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email Address
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        {/* Email */}
+        <motion.div variants={itemVariants} className="space-y-1">
+          <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Email Address</label>
+          <div className="relative group">
+            <Mail className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
             <input
               type="email"
-              id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your email"
               required
+              className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+              placeholder="john@example.com"
             />
           </div>
-        </div>
-        
-        {/* --- Phone Input (Added) --- */}
-        <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-            Phone Number (Optional)
-          </label>
-          <div className="relative">
-             {/* You can add a Phone icon here if desired */}
-            <input
-              type="tel" 
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your phone number"
-            />
-          </div>
-        </div>
+        </motion.div>
 
+        {/* Grid for Phone and Role */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Phone */}
+          <motion.div variants={itemVariants} className="space-y-1">
+            <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Phone</label>
+            <div className="relative group">
+              <Phone className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+                placeholder="(555) 000-0000"
+              />
+            </div>
+          </motion.div>
 
-        {/* --- Role Select --- */}
-        <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-            Account Type
-          </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          >
-            <option value="tenant">Tenant</option>
-            <option value="landlord">Landlord</option>
-          </select>
-        </div>
-
-        {/* --- Profile Image URL Input --- */}
-        <div>
-          <label htmlFor="profileImage" className="block text-sm font-medium text-gray-700 mb-1">
-            Profile Image URL (Optional)
-          </label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="url"
-              id="profileImage"
-              name="profileImage"
-              value={formData.profileImage || ''}
-              onChange={handleChange}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Optional: Add a profile picture URL
-          </p>
+          {/* Role */}
+          <motion.div variants={itemVariants} className="space-y-1">
+            <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Account Type</label>
+            <div className="relative group">
+              <Building className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none appearance-none cursor-pointer"
+              >
+                <option value="tenant">Tenant</option>
+                <option value="landlord">Landlord</option>
+              </select>
+              {/* Custom Arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* --- Password Input --- */}
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Create a password (min 6 chars)"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
+        {/* Profile Image URL */}
+        <motion.div variants={itemVariants} className="space-y-1">
+            <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Profile Image <span className="text-stone-300 font-normal lowercase">(optional)</span></label>
+            <div className="relative group">
+              <ImageIcon className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
+              <input
+                type="url"
+                name="profileImage"
+                value={formData.profileImage}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+                placeholder="https://..."
+              />
+            </div>
+        </motion.div>
+
+        {/* Passwords Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <motion.div variants={itemVariants} className="space-y-1">
+            <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Password</label>
+            <div className="relative group">
+              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="w-full pl-10 pr-10 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+                placeholder="Min 6 chars"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-teal-600 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="space-y-1">
+            <label className="text-xs font-bold text-stone-500 ml-1 uppercase tracking-wide">Confirm</label>
+            <div className="relative group">
+              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-stone-400 group-focus-within:text-teal-600 transition-colors" />
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                className="w-full pl-10 pr-10 py-3 bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all outline-none"
+                placeholder="Confirm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-teal-600 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </motion.div>
         </div>
 
-        {/* --- Confirm Password Input --- */}
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Confirm your password"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-            >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* --- Submit Button --- */}
-        <button
+        {/* Submit Button */}
+        <motion.button
+          variants={itemVariants}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full flex justify-center items-center py-3.5 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-lg shadow-teal-700/20 transition-all mt-4"
         >
           {loading ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <Loader2 className="animate-spin h-5 w-5" />
           ) : (
             <>
-              <UserPlus className="w-5 h-5" />
               Create Account
+              <ArrowRight className="ml-2 h-4 w-4" />
             </>
           )}
-        </button>
-      </form>
+        </motion.button>
 
-      {/* --- Link to Sign in --- */}
-      <div className="mt-6 text-center">
-        <p className="text-gray-600">
-          Already have an account?{' '}
-          <button
-            onClick={onToggleForm}
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Sign in
-          </button>
-        </p>
-      </div>
+        {/* Login Toggle */}
+        <motion.div variants={itemVariants} className="mt-8 text-center border-t border-stone-200 pt-6">
+          <p className="text-sm text-stone-500">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={onToggleForm}
+              className="font-bold text-teal-700 hover:text-teal-800 transition-colors"
+            >
+              Sign in
+            </button>
+          </p>
+        </motion.div>
+      </motion.form>
     </div>
   );
 };

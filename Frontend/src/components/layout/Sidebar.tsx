@@ -1,9 +1,9 @@
-// src/components/layout/Sidebar.tsx
-
 import React from 'react';
-// --- FIX: Removed 'Wifi' ---
-import { Home, Building, Users, DollarSign, FileText, Settings, X, TrendingUp, Wrench, ChevronLeft, ChevronRight } from 'lucide-react';
-// --- END FIX ---
+import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { 
+  Home, Building, Users, DollarSign, FileText, Settings, X, 
+  Wrench, ChevronLeft, ChevronRight, PieChart
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
@@ -15,124 +15,158 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, isOpen, onClose, isCollapsed, onToggleCollapse }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  activeTab, onTabChange, isOpen, onClose, isCollapsed, onToggleCollapse 
+}) => {
   const { user } = useAuth();
-
   const isLandlord = user?.roles.includes('ROLE_LANDLORD') ?? false;
   const isAdmin = user?.roles.includes('ROLE_ADMIN') ?? false;
   const isManager = isLandlord || isAdmin; 
-  
+
   let menuItems = [];
 
   if (isManager) {
-    // --- ADMIN / LANDLORD MENU ---
     menuItems = [
-      { id: 'admin-dashboard', label: 'Dashboard', icon: Home },
+      { id: 'admin-dashboard', label: 'Overview', icon: Home },
       { id: 'admin-properties', label: 'Properties', icon: Building },
-      { id: 'tenants', label: 'Tenants', icon: Users },
+      { id: 'tenants', label: 'People', icon: Users },
       { id: 'maintenance', label: 'Maintenance', icon: Wrench },
-      { id: 'payments', label: 'Payments', icon: DollarSign },
-      { id: 'leases', label: 'Leases', icon: FileText },
+      { id: 'payments', label: 'Financials', icon: DollarSign },
+      { id: 'leases', label: 'Documents', icon: FileText },
     ];
-    
     if (isAdmin) {
-       menuItems.splice(2, 0, { id: 'admin-users', label: 'Manage Users', icon: Users });
-       menuItems.push({ id: 'admin-analytics', label: 'Analytics', icon: TrendingUp });
-       menuItems.push({ id: 'admin-settings', label: 'System Settings', icon: Settings });
-    } else {
-       menuItems.push({ id: 'settings', label: 'Settings', icon: Settings });
+       menuItems.push({ id: 'admin-analytics', label: 'Analytics', icon: PieChart });
+       menuItems.push({ id: 'admin-settings', label: 'Settings', icon: Settings });
     }
-
   } else {
-    // --- TENANT MENU ---
     menuItems = [
-      { id: 'dashboard', label: 'Dashboard', icon: Home },
-      { id: 'properties', label: 'My Property', icon: Building },
-      { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+      { id: 'dashboard', label: 'Home', icon: Home },
+      { id: 'properties', label: 'My Unit', icon: Building },
+      { id: 'maintenance', label: 'Service', icon: Wrench },
       { id: 'payments', label: 'Payments', icon: DollarSign },
       { id: 'leases', label: 'My Lease', icon: FileText },
       { id: 'settings', label: 'Settings', icon: Settings },
     ];
   }
 
+  // Animation Variants
+  const sidebarVariants: Variants = {
+    expanded: { width: 260, transition: { type: "spring", damping: 22, stiffness: 120 } },
+    collapsed: { width: 80, transition: { type: "spring", damping: 22, stiffness: 120 } },
+  };
+
   return (
     <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 z-20 md:hidden" onClick={onClose} />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm" 
+            onClick={onClose} 
+          />
+        )}
+      </AnimatePresence>
       
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-30 ${isCollapsed ? 'w-16' : 'w-64'} bg-white shadow-lg transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} transition-all duration-200 ease-in-out md:translate-x-0 md:static md:inset-0`}>
-        {/* Desktop Toggle Button */}
-        <div className="hidden md:block absolute -right-3 top-6 z-40">
+      {/* SIDEBAR BACKGROUND: Dark Teal */}
+      <motion.div 
+        variants={sidebarVariants}
+        animate={isCollapsed ? "collapsed" : "expanded"}
+        className={`fixed inset-y-0 left-0 z-50 bg-[#042f2e] text-white shadow-2xl flex flex-col
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static border-r border-teal-900/50`}
+      >
+        
+        {/* Logo Section */}
+        <div className="h-24 flex items-center justify-center border-b border-teal-800/30 relative">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/20">
+                    <Building className="text-white w-6 h-6" />
+                </div>
+                {!isCollapsed && (
+                    <motion.span 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                        className="font-bold text-white text-xl tracking-tight"
+                    >
+                        PropertyHub
+                    </motion.span>
+                )}
+             </div>
+             {/* Mobile Close */}
+             <button onClick={onClose} className="absolute right-4 md:hidden text-teal-100 hover:text-white">
+                <X size={20} />
+             </button>
+        </div>
+
+        {/* Toggle Button */}
+        <div className="hidden md:block absolute -right-3 top-28 z-50">
           <button
             onClick={onToggleCollapse}
-            className="bg-white border border-gray-200 rounded-full p-1.5 shadow-md hover:shadow-lg transition-shadow"
+            className="bg-[#042f2e] border border-teal-700 rounded-full p-1.5 text-teal-100 hover:text-white hover:bg-teal-700 transition-all shadow-md"
           >
-            {isCollapsed ? (
-              <ChevronRight className="w-4 h-4 text-gray-600" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
-            )}
+            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
-        
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 md:hidden">
-          <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
-          <button onClick={onClose} className="p-2 rounded-md text-gray-400 hover:text-gray-500">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        
-        {/* Navigation Menu */}
-        <nav className={`mt-8 ${isCollapsed ? 'px-2' : 'px-4'}`}>
-          <ul className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              
-              return (
-                <li key={item.id}>
-                  <button
-                    onClick={() => {
-                      onTabChange(item.id);
-                      onClose();
-                    }}
-                    className={`w-full flex items-center ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'} text-sm font-medium rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    } group relative`}
-                    title={isCollapsed ? item.label : undefined}
-                  >
-                    <Icon className={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'text-blue-700' : 'text-gray-400'}`} />
-                    {!isCollapsed && item.label}
-                    
-                    {/* Tooltip for collapsed state */}
-                    {isCollapsed && (
-                      <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                        {item.label}
-                      </div>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+
+        {/* Menu Items */}
+        <nav className="flex-1 mt-8 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            
+            return (
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={() => { onTabChange(item.id); onClose(); }}
+                  className={`w-full flex items-center relative py-3.5 rounded-xl transition-all duration-300 font-medium
+                    ${isCollapsed ? 'justify-center px-0' : 'px-4'}
+                    ${isActive 
+                        ? 'bg-teal-600 text-white shadow-lg shadow-teal-900/50' 
+                        : 'text-teal-100/70 hover:bg-teal-800/40 hover:text-white'
+                    }
+                  `}
+                >
+                  <Icon className={`${isCollapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'} ${isActive ? 'text-white' : 'text-teal-200 group-hover:text-white'}`} />
+                  
+                  {!isCollapsed && (
+                    <span className="text-sm tracking-wide">{item.label}</span>
+                  )}
+                  
+                  {/* Active Glow for collapsed mode */}
+                  {isActive && isCollapsed && (
+                    <motion.div layoutId="active-dot" className="absolute right-2 top-2 w-2 h-2 bg-teal-300 rounded-full shadow-[0_0_8px_rgba(45,212,191,0.8)]" />
+                  )}
+                </button>
+
+                {/* Tooltip */}
+                {isCollapsed && (
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-2 bg-[#0f172a] text-white text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-xl whitespace-nowrap border border-teal-800">
+                    {item.label}
+                    <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-[#0f172a] rotate-45 border-l border-b border-teal-800" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
-        
-        {/* Collapsed state branding */}
-        {isCollapsed && (
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
+
+        {/* User Mini Profile (Footer) */}
+        <div className="p-4 border-t border-teal-800/30 bg-[#022c2b]">
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-teal-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-teal-900">
+                    {user?.name?.charAt(0) || 'U'}
+                </div>
+                {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
+                        <p className="text-xs text-teal-300/60 truncate capitalize mt-0.5">{user?.roles[0]?.replace('ROLE_', '').toLowerCase()}</p>
+                    </div>
+                )}
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      </motion.div>
     </>
   );
 };
 
-export default Sidebar;
+export default Sidebar; 

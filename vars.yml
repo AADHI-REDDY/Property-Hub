@@ -1,0 +1,20 @@
+# vars.yml
+backend_image: "aadhireddy/property-backend:latest"
+frontend_image: "aadhireddy/property-frontend:latest"
+
+# If you want to push to Docker Hub, set docker_push true and fill credentials
+docker_push: false
+dockerhub_user: "YOUR_DOCKERHUB_USER"
+dockerhub_pass: "YOUR_DOCKERHUB_PASS"
+
+# Paths in repo (relative to playbook)
+backend_dir: "Backend"
+frontend_dir: "Frontend"
+k8s_dir: "k8s"
+
+# Ports used for local demo (not required on remote)
+frontend_host_port: 8083
+backend_host_port: 8082
+
+# Kubernetes namespace; if default, leave as default
+k8s_namespace: "default"

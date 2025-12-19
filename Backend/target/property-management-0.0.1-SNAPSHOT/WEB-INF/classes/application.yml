@@ -1,0 +1,77 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: property-management
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/property_management?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 21441038
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        
+  # Internationalization
+  messages:
+    basename: messages
+    encoding: UTF-8
+    
+  # Jackson configuration for JSON
+  jackson:
+    time-zone: Asia/Kolkata
+    date-format: dd/MM/yyyy HH:mm:ss
+    locale: en_IN
+  
+  security:
+    user:
+      name: admin
+      password: admin
+
+# JWT Configuration
+jwt:
+  secret: PropertyHubSecretKey123456789012345678901234567890
+  expiration: 86400000 # 24 hours in milliseconds
+
+# CORS Configuration
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:5173
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    com.property: DEBUG
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Application Configuration
+app:
+  name: PropertyHub
+  version: 1.0.0
+  description: Comprehensive Property Management System
+  default-currency: INR
+  default-timezone: Asia/Kolkata
+  supported-currencies: USD,EUR,GBP,CAD,INR,AUD,JPY
+  supported-languages: en,hi,es,fr,de

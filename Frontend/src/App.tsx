@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react'; // Import useEffect
+// src/App.tsx
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+
+// --- Pages & Layout ---
+import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
-import Header from './components/layout/Header';
-import Sidebar from './components/layout/Sidebar';
+import Layout from './layout/Layout';
+
+// --- Components ---
 import Dashboard from './components/dashboard/Dashboard';
 import PropertiesList from './components/properties/PropertiesList';
 import AdminDashboard from './components/admin/AdminDashboard';
@@ -17,105 +23,100 @@ import LeasesManagement from './components/leases/LeasesManagement';
 import Settings from './components/settings/Settings';
 import MaintenanceRequests from './components/maintenance/MaintenanceRequests';
 
-const AppContent: React.FC = () => {
-  // --- FIX 1: Get the 'user' object ---
-  const { isAuthenticated, loading, user } = useAuth(); 
+// 1. Helper: Redirects users based on their role (Replaces your old useEffect)
+const RoleBasedRedirect = () => {
+  const { user } = useAuth();
+  const isLandlordOrAdmin = user?.roles.includes('ROLE_LANDLORD') || user?.roles.includes('ROLE_ADMIN');
   
-  // Set 'dashboard' as a temporary default
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  if (isLandlordOrAdmin) {
+    return <Navigate to="/admin-dashboard" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
 
-  // --- FIX 2: Add a useEffect to set the correct dashboard based on role ---
-  useEffect(() => {
-    // This runs after loading is false AND the user object is available
-    if (!loading && user) {
-      // Check if the user's roles array includes LANDLORD or ADMIN
-      const isLandlordOrAdmin = user.roles.includes('ROLE_LANDLORD') || user.roles.includes('ROLE_ADMIN');
-      
-      if (isLandlordOrAdmin) {
-        setActiveTab('admin-dashboard'); // Set default tab to admin dashboard
-      } else {
-        setActiveTab('dashboard'); // Set default tab to tenant dashboard
-      }
-    }
-  }, [loading, user]); // This effect depends on 'loading' and 'user'
-
+// 2. Helper: Protects private routes
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
+  
+  if (!isAuthenticated) return <Navigate to="/auth" />;
+  return <>{children}</>;
+};
 
-  if (!isAuthenticated) {
-    return <AuthPage />;
-  }
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        // --- FIX 3: This case will now only be hit by tenants ---
-        return <Dashboard />; 
-      case 'properties':
-        return <PropertiesList />;
-      case 'admin-dashboard':
-        // --- This case will now be hit by landlords/admins ---
-        return <AdminDashboard />;
-      case 'admin-users':
-        return <UserManagement />;
-      case 'admin-properties':
-        return <AdminProperties />;
-      case 'admin-analytics':
-        return <AdminAnalytics />;
-      case 'admin-settings':
-        return <AdminSettings />;
-      case 'tenants':
-        return <TenantsManagement />;
-      case 'maintenance':
-        return <MaintenanceRequests />;
-      case 'payments':
-        return <PaymentsManagement />;
-      case 'leases':
-        return <LeasesManagement />;
-      case 'settings':
-        return <Settings />;
-      default:
-        // Default to tenant dashboard if something goes wrong
-        return <Dashboard />;
-    }
-  };
-
-  return (
-    <div className={`flex h-screen bg-gray-100 transition-all duration-200`}>
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-200 ${sidebarCollapsed ? 'md:ml-0' : ''}`}>
-        <Header onMenuToggle={() => setSidebarOpen(true)} />
-        
-        <main className="flex-1 overflow-auto p-6">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
-  );
+// 3. Helper: Redirects logged-in users away from Landing/Auth pages
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) return null; // Or a spinner
+  
+  // If user is logged in, send them to the root of the app (which triggers RoleBasedRedirect)
+  if (isAuthenticated) return <Navigate to="/app" />;
+  
+  return <>{children}</>;
 };
 
 function App() {
   return (
-    <AuthProvider>
-      <SettingsProvider>
-        <AppContent />
-      </SettingsProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <SettingsProvider>
+          <Routes>
+            
+            {/* --- PUBLIC ROUTES --- */}
+            <Route path="/" element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            } />
+            
+            <Route path="/auth" element={
+              <PublicRoute>
+                <AuthPage />
+              </PublicRoute>
+            } />
+
+            {/* --- PROTECTED APP ROUTES --- */}
+            {/* All these routes live inside the Layout component */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }>
+              {/* Virtual root "/app" redirects to specific dashboard based on role */}
+              <Route path="app" element={<RoleBasedRedirect />} />
+
+              {/* TENANT ROUTES */}
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="properties" element={<PropertiesList />} />
+              <Route path="maintenance" element={<MaintenanceRequests />} />
+              <Route path="payments" element={<PaymentsManagement />} />
+              <Route path="leases" element={<LeasesManagement />} />
+              <Route path="settings" element={<Settings />} />
+
+              {/* ADMIN / LANDLORD ROUTES */}
+              {/* Note: The Sidebar IDs (e.g. 'admin-users') must match these paths */}
+              <Route path="admin-dashboard" element={<AdminDashboard />} />
+              <Route path="admin-users" element={<UserManagement />} />
+              <Route path="admin-properties" element={<AdminProperties />} />
+              <Route path="tenants" element={<TenantsManagement />} />
+              <Route path="admin-analytics" element={<AdminAnalytics />} />
+              <Route path="admin-settings" element={<AdminSettings />} />
+            </Route>
+
+            {/* Catch-all: Redirect to Landing Page */}
+            <Route path="*" element={<Navigate to="/" />} />
+
+          </Routes>
+        </SettingsProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
