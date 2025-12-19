@@ -14,7 +14,6 @@ import {
 } from '../types';
 
 // --- Base Configuration ---
-// Vercel will use VITE_API_BASE_URL. Localhost will fallback to http://localhost:8080
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 export const apiClient: AxiosInstance = axios.create({
@@ -29,13 +28,57 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
+    
+    // 🚀 DEMO MODE INTERCEPTOR 🚀
+    // If we are in "Demo Mode", we STOP the request here and return fake data immediately.
+    // This prevents the app from trying to hit a missing backend.
+    if (token === 'demo-token-123') {
+      config.adapter = async (config) => {
+        return new Promise((resolve) => {
+          const url = config.url || '';
+          let data: any = {};
+          
+          // Mock /auth/me (The Verify User Call)
+          if (url.includes('/auth/me')) {
+            data = {
+              id: 'demo-user',
+              name: 'Demo Landlord',
+              email: 'demo@property.com',
+              role: 'landlord'
+            };
+          }
+          // Mock /properties (The Dashboard Data)
+          else if (url.includes('/properties')) {
+            data = [
+              { id: 1, title: "Sunset Apartments", location: "Downtown", price: 1200, status: "Occupied" },
+              { id: 2, title: "Ocean View Villa", location: "Coastal Rd", price: 2500, status: "Available" }
+            ];
+          }
+          // Mock /users/tenants
+          else if (url.includes('/users/tenants')) {
+            data = [
+              { id: 101, name: "John Doe", email: "john@test.com", status: "Active" }
+            ];
+          }
+
+          // Return successful fake response
+          resolve({
+            data: data,
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: config,
+          });
+        });
+      };
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
-    console.error("API Request Error:", error);
     return Promise.reject(error);
   }
 );
@@ -43,7 +86,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('🚨 API Response Error:', error.response?.status, error.message);
+    // If it's a real 401 error from a real backend, log out
     if (error.response?.status === 401) {
       console.warn("Unauthorized request - logging out.");
       localStorage.removeItem('authToken');
@@ -94,6 +137,10 @@ export const propertiesAPI = {
     apiClient.get<Property[]>('/properties/available').then(res => res.data),
     
   uploadImages: (propertyId: string | number, files: File[]): Promise<string[]> => {
+    // Mock upload if in demo mode
+    if (localStorage.getItem('authToken') === 'demo-token-123') {
+        return Promise.resolve(["https://images.unsplash.com/photo-1564013799919-ab600027ffc6"]);
+    }
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);

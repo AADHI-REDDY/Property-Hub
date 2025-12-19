@@ -9,8 +9,6 @@ import { useAuth } from '../context/AuthContext';
 
 const AuthPage = () => {
   const { login } = useAuth(); 
-  // If you have a register function in context, grab it here: const { login, register } = useAuth();
-  
   const navigate = useNavigate();
 
   const [isLogin, setIsLogin] = useState(true);
@@ -48,39 +46,45 @@ const AuthPage = () => {
     setError(''); 
   };
 
-  // --- FIXED AUTH LOGIC ---
+  // --- AUTH LOGIC WITH DEMO MODE ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
+    // 🚀 DEMO MODE BYPASS
+    if (formData.email === 'demo@property.com' && formData.password === 'demo123') {
+      setTimeout(() => {
+        // Manually set fake tokens so the app thinks we are logged in
+        localStorage.setItem('authToken', 'demo-token-123');
+        localStorage.setItem('user', JSON.stringify({
+          id: 'demo-user',
+          name: 'Demo Admin',
+          email: 'demo@property.com',
+          role: 'landlord' // You can change this to 'tenant' to test tenant view
+        }));
+        
+        setIsLoading(false);
+        // Force a reload to ensure AuthContext picks up the new "token"
+        window.location.href = '/dashboard'; 
+      }, 1000);
+      return;
+    }
+
     try {
       if (isLogin) {
-        // LOGIN: Only send email and password
-        // The context/backend handles fetching the user ID/Role after authentication
+        // Real Login
         await login({
           email: formData.email,
           password: formData.password,
         });
-        
-        // Navigation happens after successful await
         navigate('/dashboard');
       } else {
-        // SIGNUP LOGIC
-        // Note: You usually need a separate register() function in your AuthContext.
-        // If your login() function supports registration params, you can leave this,
-        // but typically you should call register() here.
-        
-        // Example if you have a register function:
-        // await register({ name: formData.name, email: formData.email, password: formData.password, role: formData.role });
-        
-        // If you DON'T have a register function yet, we'll throw an alert or just try login
-        // For now, assuming standard login flow needs to be fixed first:
-        setError("Registration endpoint not connected in this demo.");
+        // Real Signup
+        setError("Registration requires backend connection.");
       }
     } catch (err: any) {
       console.error(err);
-      // Display the actual error message from backend if available
       setError(err.response?.data?.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
@@ -90,7 +94,7 @@ const AuthPage = () => {
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center font-sans bg-slate-900 py-10">
       
-      {/* --- BACKGROUND LAYER --- */}
+      {/* Background Layers */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <motion.div 
           className="absolute inset-0"
@@ -110,7 +114,7 @@ const AuthPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-emerald-950/80 to-slate-900/90 backdrop-blur-[2px]"></div>
       </div>
 
-      {/* --- MAIN CARD CONTENT --- */}
+      {/* Main Card */}
       <motion.div 
         layout 
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -118,12 +122,9 @@ const AuthPage = () => {
         className={`relative z-10 w-full px-6 transition-all duration-500 ${isLogin ? 'max-w-[480px]' : 'max-w-[600px]'}`}
       >
         <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden relative group">
-          
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent opacity-50"></div>
 
           <div className="p-8 md:p-10 relative">
-            
-            {/* Header */}
             <div className="text-center mb-8">
               <motion.div 
                 layout
@@ -131,7 +132,6 @@ const AuthPage = () => {
               >
                 <Building2 size={32} className="text-white" />
               </motion.div>
-              
               <motion.h1 layout className="text-3xl font-bold text-white tracking-tight mb-2">
                 {isLogin ? 'Welcome Back' : 'Create Account'}
               </motion.h1>
@@ -140,7 +140,12 @@ const AuthPage = () => {
               </motion.p>
             </div>
 
-            {/* ERROR MESSAGE */}
+            {/* DEMO CREDENTIALS HINT */}
+            <div className="mb-6 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-200 text-xs text-center">
+              <span className="font-bold">Demo Mode Available:</span><br/>
+              Email: <code>demo@property.com</code> | Pass: <code>demo123</code>
+            </div>
+
             {error && (
               <motion.div 
                 initial={{ opacity: 0, y: -10 }}
@@ -151,10 +156,7 @@ const AuthPage = () => {
               </motion.div>
             )}
 
-            {/* FORM CONTAINER */}
             <form onSubmit={handleAuth} className="space-y-4">
-              
-              {/* --- SIGN UP FIELDS --- */}
               <AnimatePresence>
                 {!isLogin && (
                   <motion.div 
@@ -180,7 +182,6 @@ const AuthPage = () => {
                 )}
               </AnimatePresence>
 
-              {/* Email */}
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-emerald-300/70" />
@@ -191,12 +192,10 @@ const AuthPage = () => {
                   onChange={handleInputChange}
                   type="email"
                   placeholder="Email Address"
-                  required
                   className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
                 />
               </div>
 
-              {/* Password */}
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-emerald-300/70" />
@@ -207,7 +206,6 @@ const AuthPage = () => {
                   onChange={handleInputChange}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
-                  required
                   className="block w-full pl-11 pr-12 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
                 />
                 <button
@@ -219,7 +217,6 @@ const AuthPage = () => {
                 </button>
               </div>
 
-              {/* Action Button */}
               <motion.button
                 layout
                 whileHover={{ scale: 1.02 }}
@@ -241,7 +238,6 @@ const AuthPage = () => {
               </motion.button>
             </form>
 
-            {/* Switch Mode */}
             <div className="mt-8 text-center">
               <p className="text-slate-400 text-sm">
                 {isLogin ? "New to PropertyHub? " : "Already have an account? "}
@@ -254,7 +250,6 @@ const AuthPage = () => {
                 </button>
               </p>
             </div>
-
           </div>
           
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 opacity-80"></div>
@@ -267,7 +262,6 @@ const AuthPage = () => {
           <div className="flex items-center gap-1.5"><CheckCircle2 size={14} /> Enterprise Security</div>
           <div className="flex items-center gap-1.5"><Sparkles size={14} /> AI Powered</div>
         </motion.div>
-
       </motion.div>
     </div>
   );
