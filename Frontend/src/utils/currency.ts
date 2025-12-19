@@ -21,14 +21,15 @@ export const TIMEZONES = {
   'UTC+9': { name: 'Japan Standard Time', offset: 9 },
 };
 
-export const formatCurrency = (amount: number, currencyCode: string = 'USD'): string => {
+// ✅ UPDATED: Default is now 'INR' instead of 'USD'
+export const formatCurrency = (amount: number, currencyCode: string = 'INR'): string => {
   const currency = CURRENCIES[currencyCode as keyof typeof CURRENCIES];
   if (!currency) return `$${amount.toLocaleString()}`;
   
   // Special formatting for different currencies
   switch (currencyCode) {
     case 'INR':
-      // Indian number formatting with commas
+      // Indian number formatting with commas (e.g., 1,50,000)
       return `₹${amount.toLocaleString('en-IN')}`;
     case 'JPY':
       return `¥${Math.round(amount).toLocaleString()}`;
@@ -42,7 +43,7 @@ export const formatCurrency = (amount: number, currencyCode: string = 'USD'): st
 };
 
 export const convertCurrency = (amount: number, fromCurrency: string, toCurrency: string): number => {
-  // Mock exchange rates (in a real app, you'd fetch from an API)
+  // Mock exchange rates (relative to USD)
   const exchangeRates: { [key: string]: number } = {
     USD: 1,
     EUR: 0.85,
@@ -59,6 +60,7 @@ export const convertCurrency = (amount: number, fromCurrency: string, toCurrency
   return (amount / fromRate) * toRate;
 };
 
+// ✅ NOTE: You already had this correct for India (UTC+5:30)
 export const formatDateTime = (date: Date, timezone: string = 'UTC+5:30'): string => {
   const tz = TIMEZONES[timezone as keyof typeof TIMEZONES];
   if (!tz) return date.toLocaleString();
