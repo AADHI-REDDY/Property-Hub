@@ -9,16 +9,15 @@ export type PillNavItem = {
   ariaLabel?: string;
 };
 
-// FIX 1: Added sliderColor to the Interface
 export interface PillNavProps {
   logo: React.ReactNode;
   items: PillNavItem[];
   activeHref?: string;
   className?: string;
   ease?: string;
-  baseColor?: string;      
-  pillColor?: string;      
-  sliderColor?: string;    // <--- Added this property
+  baseColor?: string;
+  pillColor?: string;
+  sliderColor?: string; // ✅ Added
   hoveredPillTextColor?: string;
   pillTextColor?: string;
   onMobileMenuClick?: () => void;
@@ -33,22 +32,19 @@ const PillNav: React.FC<PillNavProps> = ({
   ease = 'power3.easeOut',
   baseColor = '#ffffff',
   pillColor = 'transparent',
-  sliderColor = '#0f766e', // FIX 2: Added default value here
+  sliderColor = '#10b981', // ✅ Default Emerald Color
   hoveredPillTextColor = '#ffffff',
-  pillTextColor = '#000000',
+  pillTextColor = '#1e293b',
   onMobileMenuClick,
   initialLoadAnimation = true
 }) => {
   const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
   const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
-  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
-  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
-  const logoRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const layout = () => {
@@ -57,7 +53,8 @@ const PillNav: React.FC<PillNavProps> = ({
         const pill = circle.parentElement as HTMLElement;
         const rect = pill.getBoundingClientRect();
         const { width: w, height: h } = rect;
-        
+
+        // Calculate radius to cover the whole pill
         const R = ((w * w) / 4 + h * h) / (2 * h);
         const D = Math.ceil(2 * R) + 2;
         const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (w * w) / 4))) + 1;
@@ -83,7 +80,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
         const tl = gsap.timeline({ paused: true });
         tl.to(circle, { scale: 1.2, xPercent: -50, duration: 0.4, ease, overwrite: 'auto' }, 0);
-        
+
         if (label) {
           tl.to(label, { y: -(h + 8), duration: 0.4, ease, overwrite: 'auto' }, 0);
         }
@@ -107,12 +104,10 @@ const PillNav: React.FC<PillNavProps> = ({
     if (initialLoadAnimation) {
       const navItems = navItemsRef.current;
       if (navItems) {
-        gsap.set(navItems, { width: 0, overflow: 'hidden' });
-        gsap.to(navItems, {
-          width: 'auto',
-          duration: 0.6,
-          ease
-        });
+        gsap.fromTo(navItems, 
+          { width: 0, overflow: 'hidden' },
+          { width: 'auto', duration: 0.8, ease }
+        );
       }
     }
 
@@ -121,93 +116,92 @@ const PillNav: React.FC<PillNavProps> = ({
 
   const handleEnter = (i: number) => {
     const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(tl.duration(), { duration: 0.3, ease, overwrite: 'auto' });
+    if (tl) {
+        activeTweenRefs.current[i]?.kill();
+        activeTweenRefs.current[i] = tl.tweenTo(tl.duration(), { duration: 0.3, ease, overwrite: 'auto' });
+    }
   };
 
   const handleLeave = (i: number) => {
     const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(0, { duration: 0.2, ease, overwrite: 'auto' });
+    if (tl) {
+        activeTweenRefs.current[i]?.kill();
+        activeTweenRefs.current[i] = tl.tweenTo(0, { duration: 0.25, ease, overwrite: 'auto' });
+    }
   };
 
   const toggleMobileMenu = () => {
-    const newState = !isMobileMenuOpen;
-    setIsMobileMenuOpen(newState);
+    setIsMobileMenuOpen(!isMobileMenuOpen);
     onMobileMenuClick?.();
   };
 
-  const isExternalLink = (href: string) => href.startsWith('http') || href.startsWith('#');
-  const isRouterLink = (href?: string) => href && !isExternalLink(href);
-
-  // FIX 3: Mapped the new prop to the CSS variable
+  // ✅ CSS Variables Mapping
   const cssVars = {
-    ['--base']: baseColor,
-    ['--pill-bg']: pillColor,
-    ['--slider-bg']: sliderColor, // <--- This sends the color to your CSS
-    ['--hover-text']: hoveredPillTextColor,
-    ['--pill-text']: resolvedPillTextColor
+    '--base': baseColor,
+    '--pill-bg': pillColor,
+    '--slider-bg': sliderColor, 
+    '--hover-text': hoveredPillTextColor,
+    '--pill-text': resolvedPillTextColor
   } as React.CSSProperties;
 
+  const isExternal = (href: string) => href.startsWith('http') || href.startsWith('#');
+
   return (
-    <div className="pill-nav-container">
-      <nav className={`pill-nav ${className}`} aria-label="Primary" style={cssVars}>
-        <div className="pill-logo" ref={logoRef}>
+    <div className="pill-nav-container" style={cssVars}>
+      <nav className={`pill-nav ${className}`} aria-label="Primary">
+        
+        {/* Logo Section */}
+        <div className="pill-logo">
            {logo}
         </div>
+
+        {/* Desktop Menu */}
         <div className="pill-nav-items desktop-only" ref={navItemsRef}>
-          <ul className="pill-list" role="menubar">
+          <ul className="pill-list">
             {items.map((item, i) => (
-              <li key={item.href} role="none">
-                {isRouterLink(item.href) ? (
-                  <Link
-                    role="menuitem"
-                    to={item.href}
-                    className={`pill${activeHref === item.href ? ' is-active' : ''}`}
-                    aria-label={item.ariaLabel || item.label}
-                    onMouseEnter={() => handleEnter(i)}
-                    onMouseLeave={() => handleLeave(i)}
-                  >
-                    <span className="hover-circle" aria-hidden="true" ref={el => { circleRefs.current[i] = el; }} />
-                    <span className="label-stack">
-                      <span className="pill-label">{item.label}</span>
-                      <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
-                    </span>
-                  </Link>
+              <li key={item.href}>
+                {isExternal(item.href) ? (
+                    <a href={item.href} 
+                       className={`pill ${activeHref === item.href ? 'is-active' : ''}`}
+                       onMouseEnter={() => handleEnter(i)}
+                       onMouseLeave={() => handleLeave(i)}>
+                        {/* Background Animation Circle */}
+                        <span className="hover-circle" ref={el => { circleRefs.current[i] = el; }} />
+                        {/* Text Stack */}
+                        <span className="label-stack">
+                            <span className="pill-label">{item.label}</span>
+                            <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
+                        </span>
+                    </a>
                 ) : (
-                  <a
-                    role="menuitem"
-                    href={item.href}
-                    className={`pill${activeHref === item.href ? ' is-active' : ''}`}
-                    aria-label={item.ariaLabel || item.label}
-                    onMouseEnter={() => handleEnter(i)}
-                    onMouseLeave={() => handleLeave(i)}
-                  >
-                    <span className="hover-circle" aria-hidden="true" ref={el => { circleRefs.current[i] = el; }} />
-                    <span className="label-stack">
-                      <span className="pill-label">{item.label}</span>
-                      <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
-                    </span>
-                  </a>
+                    <Link to={item.href} 
+                          className={`pill ${activeHref === item.href ? 'is-active' : ''}`}
+                          onMouseEnter={() => handleEnter(i)}
+                          onMouseLeave={() => handleLeave(i)}>
+                        <span className="hover-circle" ref={el => { circleRefs.current[i] = el; }} />
+                        <span className="label-stack">
+                            <span className="pill-label">{item.label}</span>
+                            <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
+                        </span>
+                    </Link>
                 )}
               </li>
             ))}
           </ul>
         </div>
-        <button
-          className="mobile-menu-button mobile-only"
+
+        {/* Mobile Toggle */}
+        <button 
+          className={`mobile-menu-button mobile-only ${isMobileMenuOpen ? 'open' : ''}`}
           onClick={toggleMobileMenu}
-          aria-label="Toggle menu"
-          ref={hamburgerRef}
         >
           <span className="hamburger-line" />
           <span className="hamburger-line" />
         </button>
       </nav>
-      {/* Mobile Menu logic omitted for brevity, but keep your existing code here */}
-       <div className="mobile-menu-popover mobile-only" ref={mobileMenuRef} style={cssVars}>
+
+      {/* Mobile Menu Dropdown */}
+      <div className={`mobile-menu-popover ${isMobileMenuOpen ? 'is-open' : ''}`}>
         <ul className="mobile-menu-list">
           {items.map(item => (
             <li key={item.href}>

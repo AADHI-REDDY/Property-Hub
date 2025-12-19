@@ -1,6 +1,6 @@
 .pill-nav-container {
   position: absolute;
-  top: 1.5rem; /* Adjusted to sit nicely in header */
+  top: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 99;
@@ -16,7 +16,7 @@
 }
 
 .pill-nav {
-  --nav-h: 52px; /* Made slightly taller for better touch targets */
+  --nav-h: 52px;
   --logo: 42px;
   --pill-pad-x: 24px;
   --pill-gap: 4px;
@@ -42,7 +42,7 @@
   height: var(--nav-h);
   background: var(--base, #000);
   border-radius: 9999px;
-  box-shadow: 0 4px 20px -5px rgba(0,0,0,0.1); /* Added subtle shadow */
+  box-shadow: 0 4px 20px -5px rgba(0,0,0,0.1);
 }
 
 .pill-logo {
@@ -55,9 +55,9 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  margin-right: 12px; /* Spacing from pill list */
+  margin-right: 12px;
   box-shadow: 0 4px 12px -2px rgba(0,0,0,0.1);
-  color: #fff; /* Ensure icon is white */
+  color: #fff;
 }
 
 .pill-logo img {
@@ -94,7 +94,7 @@
   border-radius: 9999px;
   box-sizing: border-box;
   font-weight: 600;
-  font-size: 14px; /* Slightly smaller, elegant font size */
+  font-size: 14px;
   line-height: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -104,12 +104,13 @@
   overflow: hidden;
 }
 
+/* ✅ FIXED: Uses --slider-bg (Green) instead of --base (White) */
 .pill .hover-circle {
   position: absolute;
   left: 50%;
   bottom: 0;
   border-radius: 50%;
-  background: var(--base, #000);
+  background: var(--slider-bg, #10b981); /* <--- CHANGED THIS LINE */
   z-index: 1;
   display: block;
   pointer-events: none;
@@ -163,12 +164,8 @@
 }
 
 @media (max-width: 768px) {
-  .desktop-only {
-    display: none;
-  }
-  .mobile-only {
-    display: block;
-  }
+  .desktop-only { display: none; }
+  .mobile-only { display: block; }
 }
 
 .mobile-menu-button {
@@ -189,9 +186,7 @@
 }
 
 @media (max-width: 768px) {
-  .mobile-menu-button {
-    display: flex;
-  }
+  .mobile-menu-button { display: flex; }
 }
 
 .hamburger-line {
@@ -205,7 +200,7 @@
 
 .mobile-menu-popover {
   position: absolute;
-  top: 4.5em; /* Adjusted for taller header */
+  top: 4.5em;
   left: 1rem;
   right: 1rem;
   background: var(--base, #f0f0f0);
@@ -216,15 +211,6 @@
   transform-origin: top center;
   visibility: hidden;
   padding: 8px;
-}
-
-.mobile-menu-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .mobile-menu-popover .mobile-menu-link {

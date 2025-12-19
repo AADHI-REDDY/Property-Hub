@@ -260,7 +260,7 @@ const AuthPage = () => {
           className="mt-8 flex justify-center gap-6 text-slate-400/60 text-xs font-medium"
         >
           <div className="flex items-center gap-1.5"><CheckCircle2 size={14} /> Enterprise Security</div>
-          <div className="flex items-center gap-1.5"><Sparkles size={14} /> AI Powered</div>
+          <div className="flex items-center gap-1.5"><Sparkles size={14} /> Reddy Powered</div>
         </motion.div>
       </motion.div>
     </div>
