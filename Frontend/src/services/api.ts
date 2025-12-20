@@ -8,13 +8,13 @@ import {
   LoginResponse,
   CreateTenantRequest,
   Property,
-  PropertyRequest,
+  PropertyRequest, // Import the corrected type
   Lease,
   Payment
 } from '../types';
 
 // --- Base Configuration ---
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -28,57 +28,13 @@ export const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
-    
-    // 🚀 DEMO MODE INTERCEPTOR 🚀
-    // If we are in "Demo Mode", we STOP the request here and return fake data immediately.
-    // This prevents the app from trying to hit a missing backend.
-    if (token === 'demo-token-123') {
-      config.adapter = async (config) => {
-        return new Promise((resolve) => {
-          const url = config.url || '';
-          let data: any = {};
-          
-          // Mock /auth/me (The Verify User Call)
-          if (url.includes('/auth/me')) {
-            data = {
-              id: 'demo-user',
-              name: 'Demo Landlord',
-              email: 'demo@property.com',
-              role: 'landlord'
-            };
-          }
-          // Mock /properties (The Dashboard Data)
-          else if (url.includes('/properties')) {
-            data = [
-              { id: 1, title: "Sunset Apartments", location: "Downtown", price: 1200, status: "Occupied" },
-              { id: 2, title: "Ocean View Villa", location: "Coastal Rd", price: 2500, status: "Available" }
-            ];
-          }
-          // Mock /users/tenants
-          else if (url.includes('/users/tenants')) {
-            data = [
-              { id: 101, name: "John Doe", email: "john@test.com", status: "Active" }
-            ];
-          }
-
-          // Return successful fake response
-          resolve({
-            data: data,
-            status: 200,
-            statusText: 'OK',
-            headers: {},
-            config: config,
-          });
-        });
-      };
-    }
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    console.error("API Request Error:", error);
     return Promise.reject(error);
   }
 );
@@ -86,7 +42,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If it's a real 401 error from a real backend, log out
+    console.error('🚨 API Response Error:', error.response?.status, error.message);
     if (error.response?.status === 401) {
       console.warn("Unauthorized request - logging out.");
       localStorage.removeItem('authToken');
@@ -98,7 +54,7 @@ apiClient.interceptors.response.use(
 
 /**
  * ====================================================
- * AUTH API Calls
+ * AUTH API Calls (/api/auth/...)
  * ====================================================
  */
 export const apiLogin = (credentials: LoginPayload): Promise<LoginResponse> =>
@@ -112,9 +68,10 @@ export const apiGetCurrentUser = (): Promise<User> =>
 
 /**
  * ====================================================
- * PROPERTIES API Calls
+ * PROPERTIES API Calls (/api/properties/...)
  * ====================================================
  */
+// ✅ Exporting the object
 export const propertiesAPI = {
   getAll: (): Promise<Property[]> => apiClient.get<Property[]>('/properties').then(res => res.data),
   
@@ -136,11 +93,8 @@ export const propertiesAPI = {
   getAvailable: (): Promise<Property[]> => 
     apiClient.get<Property[]>('/properties/available').then(res => res.data),
     
+  // Add the image upload function
   uploadImages: (propertyId: string | number, files: File[]): Promise<string[]> => {
-    // Mock upload if in demo mode
-    if (localStorage.getItem('authToken') === 'demo-token-123') {
-        return Promise.resolve(["https://images.unsplash.com/photo-1564013799919-ab600027ffc6"]);
-    }
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
@@ -153,19 +107,46 @@ export const propertiesAPI = {
 
 /**
  * ====================================================
- * USERS & LEASES API Calls
+ * USERS API Calls (/api/users/...)
  * ====================================================
  */
 export const apiGetTenants = (): Promise<User[]> =>
   apiClient.get<User[]>('/users/tenants').then(res => res.data);
 
+/**
+ * ====================================================
+ * LEASES API Calls (/api/leases/...)
+ * ====================================================
+ */
 export const apiGetAllLeases = (): Promise<Lease[]> =>
   apiClient.get<Lease[]>('/leases').then(res => res.data);
 
+/**
+ * ====================================================
+ * PAYMENTS API Calls (/api/payments/...)
+ * ====================================================
+ */
 export const apiGetAllPayments = (): Promise<Payment[]> =>
   apiClient.get<Payment[]>('/payments').then(res => res.data);
 
+/**
+ * ====================================================
+ * ADMIN API Calls (/api/admin/...)
+ * ====================================================
+ */
 export const apiCreateTenantByAdmin = (tenantData: CreateTenantRequest): Promise<User> =>
   apiClient.post<User>('/admin/tenants', tenantData).then(res => res.data);
 
+// Export for AddTenantModal
 export const createTenant = apiCreateTenantByAdmin;
+// src/services/api.ts (Add this to your existing file)
+
+// ... existing imports
+
+/**
+ * ====================================================
+ * FORGOT PASSWORD API
+ * ====================================================
+ */
+export const apiForgotPassword = (email: string): Promise<void> =>
+  apiClient.post<void>('/auth/forgot-password', { email }).then(res => res.data);

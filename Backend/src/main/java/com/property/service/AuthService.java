@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,14 +25,12 @@ import com.property.security.JwtTokenProvider;
 @Service
 public class AuthService {
 
-    // --- These are all the dependencies you need ---
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
 
-    // --- Use Constructor Injection ---
     @Autowired
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -46,44 +45,61 @@ public class AuthService {
     }
 
     /**
-     * Handles user login and returns a JWT token and User info.
+     * UPDATED LOGIN METHOD
+     * Fixes the redirect issue and gives specific error messages.
      */
     public LoginResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
-
-        String token = tokenProvider.generateToken(authentication);
-
+        // 1. Check if email exists specifically
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("This email is not registered."));
 
-        return new LoginResponse(token, new UserResponse(user));
+        // 2. Check password with Try/Catch to separate the error
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+            
+            // If we get here, password is correct
+            String token = tokenProvider.generateToken(authentication);
+            return new LoginResponse(token, new UserResponse(user));
+
+        } catch (AuthenticationException e) {
+            // 3. Catch the error and throw a specific message
+            // We use RuntimeException so it returns 400 Bad Request (which doesn't redirect)
+            throw new RuntimeException("Incorrect password. Please try again.");
+        }
     }
 
     /**
-     * Handles new user registration (signup).
+     * SIGNUP METHOD (Kept the same as your working version)
      */
     public UserResponse signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
-        Set<String> strRoles = request.getRoles();
         Set<Role> roles = new HashSet<>();
 
-        if (strRoles == null || strRoles.isEmpty()) {
-            // Default role: TENANT
-            Role tenantRole = roleRepository.findByName("ROLE_TENANT")
-                    .orElseThrow(() -> new RuntimeException("Error: Default role 'ROLE_TENANT' not found."));
-            roles.add(tenantRole);
-        } else {
-            // Map each role string to a Role entity
-            strRoles.forEach(roleName -> {
+        // Handle Role (Single field from frontend)
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            String roleName = "ROLE_" + request.getRole().toUpperCase();
+            Role userRole = roleRepository.findByName(roleName)
+                    .orElseThrow(() -> new RuntimeException("Error: Role '" + roleName + "' not found."));
+            roles.add(userRole);
+        } 
+        // Handle Roles (List field fallback)
+        else if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+            request.getRoles().forEach(roleName -> {
                 Role role = roleRepository.findByName(roleName)
                         .orElseThrow(() -> new RuntimeException("Error: Role '" + roleName + "' not found."));
                 roles.add(role);
             });
+        } 
+        // Default to Tenant
+        else {
+            Role tenantRole = roleRepository.findByName("ROLE_TENANT")
+                    .orElseThrow(() -> new RuntimeException("Error: Default role 'ROLE_TENANT' not found."));
+            roles.add(tenantRole);
         }
 
         User user = User.builder()
@@ -99,12 +115,36 @@ public class AuthService {
         return new UserResponse(savedUser);
     }
 
-    /**
-     * Gets the current user's details based on their email.
-     */
     public UserResponse getCurrentUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         return new UserResponse(user);
     }
+
+//Inside AuthService.java
+
+// ... existing methods
+
+/**
+ * SIMULATED Password Reset Flow
+ */
+public void processForgotPassword(String email) {
+    // 1. Check if user exists (Optional: Silent fail is better for security, but we will check for dev)
+    userRepository.findByEmail(email).ifPresent(user -> {
+        
+        // 2. Generate a fake token (In production, generate a UUID and save to DB)
+        String resetToken = java.util.UUID.randomUUID().toString();
+        
+        // 3. SIMULATE SENDING EMAIL
+        // Watch your BACKEND TERMINAL for this message!
+        System.out.println("=================================================");
+        System.out.println("📧 EMAIL SIMULATION - FORGOT PASSWORD");
+        System.out.println("TO: " + email);
+        System.out.println("LINK: http://localhost:3000/reset-password?token=" + resetToken);
+        System.out.println("=================================================");
+    });
+    
+    // We always return success to the frontend to prevent "User Enumeration" attacks
+    // (i.e. hackers finding out which emails are registered)
+}
 }

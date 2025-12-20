@@ -1,94 +1,86 @@
 // src/context/AuthContext.tsx
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { User, LoginPayload, SignupPayload, LoginResponse } from '../types'; // Import correct types
-// Import the API functions defined in api.ts
+import { User, LoginPayload, SignupPayload, LoginResponse } from '../types'; 
 import { apiLogin, apiRegisterUser, apiGetCurrentUser, apiClient } from '../services/api';
 
 // Define the shape/type of the context value
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  loading: boolean; // Indicates if auth state is being determined
+  loading: boolean; // Indicates if initial auth check is running
   error: string | null;
-  isAuthenticated: boolean; // Derived state: true if user & token exist
+  isAuthenticated: boolean; 
   login: (credentials: LoginPayload) => Promise<void>;
-  signup: (payload: SignupPayload) => Promise<void>; // Expects SignupPayload
+  signup: (payload: SignupPayload) => Promise<void>; 
   logout: () => void;
-  fetchUser: () => Promise<void>; // Function to explicitly refresh user data
+  fetchUser: () => Promise<void>; 
 }
 
-// Create the context with default/initial values
+// Create the context with default values
 const AuthContext = createContext<AuthContextType>({
   user: null,
   token: null,
-  loading: true, // Start in loading state until token check is complete
+  loading: true, 
   error: null,
   isAuthenticated: false,
-  // Provide dummy async functions for defaults to match type
-  login: async () => { console.warn("Login function called before AuthProvider mounted"); },
-  signup: async () => { console.warn("Signup function called before AuthProvider mounted"); },
-  logout: () => { console.warn("Logout function called before AuthProvider mounted"); },
-  fetchUser: async () => { console.warn("FetchUser function called before AuthProvider mounted"); },
+  login: async () => { console.warn("Login called before AuthProvider mounted"); },
+  signup: async () => { console.warn("Signup called before AuthProvider mounted"); },
+  logout: () => { console.warn("Logout called before AuthProvider mounted"); },
+  fetchUser: async () => { console.warn("FetchUser called before AuthProvider mounted"); },
 });
 
-// Auth Provider Component - Wraps your application
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  // Initialize token from localStorage
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('authToken'));
-  const [loading, setLoading] = useState<boolean>(true); // Start loading
+  
+  // ✅ FIX: This loading state is ONLY for the initial page load (checking if user is logged in)
+  // We do NOT use it for login/signup button clicks anymore.
+  const [loading, setLoading] = useState<boolean>(true); 
+  
   const [error, setError] = useState<string | null>(null);
 
   // Effect runs once on mount to check initial token validity
   useEffect(() => {
     const initializeAuth = async () => {
       if (token) {
-        // Set token in axios headers immediately if it exists
         apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        await fetchUser(); // Attempt to fetch user data
+        await fetchUser(); 
       } else {
-        setLoading(false); // No token found, stop loading
+        setLoading(false); 
       }
     };
     initializeAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []); 
 
-  // Function to fetch user details (e.g., after login or on refresh)
   const fetchUser = async () => {
-    // Avoid fetching if already loading to prevent race conditions
-    if (loading && user) return; // Already loading or user exists
+    if (loading && user) return; 
     
-    // Only set loading if not already loading during initial check
+    // We keep setLoading here because this usually happens on page refresh/load
     if (!loading) setLoading(true); 
     setError(null);
     try {
-      // apiGetCurrentUser should return the User object directly
       const fetchedUser: User = await apiGetCurrentUser();
       setUser(fetchedUser);
     } catch (err) {
-      console.error("Failed to fetch current user (token might be invalid):", err);
-      // If fetching user fails (e.g., invalid token), log out
+      console.error("Failed to fetch current user:", err);
       logout();
-      // Optionally set an error, but logout usually handles the state change
-      // setError("Session expired or invalid.");
     } finally {
-      setLoading(false); // Always stop loading after attempt
+      setLoading(false); 
     }
   };
 
 
-  // Login Function
+  // ✅ UPDATED LOGIN FUNCTION (No Global Loading)
   const login = async (credentials: LoginPayload) => {
-    setLoading(true);
+    // We removed setLoading(true) here so the page doesn't blink/reset
     setError(null);
     try {
-      // apiLogin returns LoginResponse { token: string; user: User }
       const response: LoginResponse = await apiLogin(credentials);
 
       const receivedToken = response.token;
@@ -100,59 +92,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Store token
       localStorage.setItem('authToken', receivedToken);
-      // Set Authorization header for future requests
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
 
-      // Update state
       setToken(receivedToken);
       setUser(loggedInUser);
 
-    } catch (err: any) { // Catch as 'any' or 'unknown' for better error handling
+    } catch (err: any) { 
       console.error("AuthContext login failed:", err);
       const message = err.response?.data?.message || err.message || "Login failed. Check credentials.";
       setError(message);
-      throw err; // Re-throw so the calling component (form) knows it failed
-    } finally {
-      setLoading(false);
-    }
+      throw err; // This allows AuthPage to catch the error and show the red box
+    } 
+    // We removed 'finally { setLoading(false) }'
   };
 
-  // Signup Function - Expects SignupPayload
+  // ✅ UPDATED SIGNUP FUNCTION (No Global Loading)
   const signup = async (payload: SignupPayload) => {
-    setLoading(true);
+    // We removed setLoading(true) here
     setError(null);
     try {
-      // apiRegisterUser expects SignupPayload and should return the created User
       const createdUser: User = await apiRegisterUser(payload);
-
       console.log("Signup successful:", createdUser);
-      // After signup, you might want to automatically log the user in
-      // or redirect them to the login page with a success message.
-      // For now, it just logs success.
 
-    } catch (err: any) { // Catch as 'any' or 'unknown'
+    } catch (err: any) { 
       console.error("AuthContext signup failed:", err);
        const message = err.response?.data?.message || err.message || 'Signup failed. Please try again.';
       setError(message);
-      throw err; // Re-throw for the form
-    } finally {
-      setLoading(false);
-    }
+      throw err; 
+    } 
+    // We removed 'finally { setLoading(false) }'
   };
 
-  // Logout Function
   const logout = () => {
     localStorage.removeItem('authToken');
-    delete apiClient.defaults.headers.common['Authorization']; // Remove auth header
+    delete apiClient.defaults.headers.common['Authorization']; 
     setToken(null);
     setUser(null);
-    setError(null); // Clear any previous errors
-    // Optionally navigate to login page using react-router-dom if needed elsewhere
-    // navigate('/login');
+    setError(null); 
   };
 
-  // --- Provide the context value ---
-  // Calculate isAuthenticated based on current state
   const isAuthenticated = !!token && !!user;
 
   const value = {
@@ -167,21 +145,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     fetchUser
   };
 
-  // Render provider with calculated value, only rendering children when not initially loading
-  // or provide loading state down if children need to handle it
   return (
       <AuthContext.Provider value={value}>
-        {/* You might want a global loading spinner here based on 'loading' state */}
         {children}
       </AuthContext.Provider>
   );
 };
 
-// --- Custom hook to easily use the Auth context ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // This error means you're trying to useAuth outside of an AuthProvider
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

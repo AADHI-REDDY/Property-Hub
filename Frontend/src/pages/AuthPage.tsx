@@ -1,32 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Building2, ArrowRight, Mail, Lock, Eye, EyeOff, 
-  Sparkles, User, CheckCircle2, Phone, Image as ImageIcon, 
-  Briefcase 
+import {
+  Building2,
+  ArrowRight,
+  Mail,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  Sparkles,
+  Loader2,
+  ArrowLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { apiForgotPassword } from '../services/api';
 
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Form State
+  // Modes: 'login' | 'signup' | 'forgot'
+  const [authMode, setAuthMode] = useState('login'); 
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    role: 'tenant',
+    role: 'TENANT',
     profileImage: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
-  // Mouse move effect for parallax
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  
+  // Parallax background effect
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({
@@ -38,280 +51,352 @@ const AuthPage = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
+    setSuccessMessage('');
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      // 1. FORGOT PASSWORD LOGIC
+      if (authMode === 'forgot') {
+        if (!formData.email) throw new Error("Please enter your email");
+        
+        await apiForgotPassword(formData.email);
+        setSuccessMessage("If an account exists, a reset link has been sent to your email.");
+        setIsLoading(false);
+        return; 
+      }
+
+      // 2. SIGNUP VALIDATION
+      if (authMode === 'signup') {
+        if (formData.password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+      }
+
+      // 3. LOGIN / SIGNUP EXECUTION
+      if (authMode === 'login') {
+        await login({ email: formData.email, password: formData.password });
+        navigate('/dashboard');
+      } else if (authMode === 'signup') {
+        const response = await fetch('http://localhost:8081/api/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              role: formData.role,
+              profileImage: formData.profileImage,
+              password: formData.password,
+            }),
+          }
+        );
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Signup failed');
+
+        await login({ email: formData.email, password: formData.password });
+        navigate('/dashboard');
+      }
+
+    } catch (err: any) {
+      console.error('Auth Error:', err);
+      // Prioritize backend message
+      const backendMessage = err.response?.data?.message;
+      const genericMessage = err.message || 'Authentication failed';
+      setError(backendMessage || genericMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center font-sans bg-slate-900 py-10">
-      
-      {/* --- BACKGROUND LAYER --- */}
+    <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center bg-slate-900 py-10">
+      {/* Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <motion.div 
+        <motion.div
           className="absolute inset-0"
-          animate={{ 
+          animate={{
             scale: [1.1, 1.15, 1.1],
             x: mousePosition.x * -1,
-            y: mousePosition.y * -1 
+            y: mousePosition.y * -1,
           }}
-          transition={{ scale: { duration: 20, repeat: Infinity, repeatType: "reverse" }, x: { type: "tween", ease: "linear" }, y: { type: "tween", ease: "linear" } }}
+          transition={{
+            scale: { duration: 20, repeat: Infinity },
+            x: { type: 'tween', ease: 'linear' },
+            y: { type: 'tween', ease: 'linear' },
+          }}
         >
-          <img 
-            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80" 
-            alt="City Background" 
+          <img
+            src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab"
             className="w-full h-full object-cover"
+            alt="Background"
           />
         </motion.div>
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-emerald-950/80 to-slate-900/90 backdrop-blur-[2px]"></div>
-        <motion.div 
-          animate={{ opacity: [0.3, 0.5, 0.3], scale: [1, 1.2, 1] }}
-          transition={{ duration: 8, repeat: Infinity }}
-          className="absolute top-0 left-0 w-full h-full bg-gradient-to-tr from-emerald-500/20 via-transparent to-transparent blend-screen pointer-events-none"
-        />
+        <div className="absolute inset-0 bg-slate-900/80" />
       </div>
 
-      {/* --- MAIN CARD CONTENT --- */}
-      <motion.div 
-        layout // Animates size changes automatically
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative z-10 w-full px-6 transition-all duration-500 ${isLogin ? 'max-w-[480px]' : 'max-w-[600px]'}`}
+      {/* Card */}
+      <motion.div
+        className="relative z-10 w-full max-w-[520px] px-6"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl overflow-hidden relative group">
-          
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent opacity-50"></div>
-
-          <div className="p-8 md:p-10 relative">
-            
-            {/* Header */}
-            <div className="text-center mb-8">
-              <motion.div 
-                layout
-                className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 shadow-lg shadow-emerald-500/30 mb-6"
-              >
-                <Building2 size={32} className="text-white" />
-              </motion.div>
-              
-              <motion.h1 layout className="text-3xl font-bold text-white tracking-tight mb-2">
-                {isLogin ? 'Welcome Back' : 'Create Account'}
-              </motion.h1>
-              <motion.p layout className="text-slate-300 text-sm">
-                {isLogin ? 'Enter your details to access your dashboard.' : 'Join our property management platform.'}
-              </motion.p>
+        <div className="bg-white/10 backdrop-blur-2xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-emerald-500 mb-4">
+              <Building2 className="text-white" size={28} />
             </div>
+            
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={authMode}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h1 className="text-2xl font-bold text-white">
+                  {authMode === 'login' && 'Welcome Back'}
+                  {authMode === 'signup' && 'Create Account'}
+                  {authMode === 'forgot' && 'Reset Password'}
+                </h1>
+                <p className="text-slate-300 text-sm mt-1">
+                  {authMode === 'login' && 'Access your dashboard'}
+                  {authMode === 'signup' && 'Join our property management platform'}
+                  {authMode === 'forgot' && 'Enter your email to receive a reset link'}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-            {/* FORM CONTAINER */}
-            <div className="space-y-4">
-              
-              {/* --- SIGN UP FIELDS (Grid Layout) --- */}
-              <AnimatePresence>
-                {!isLogin && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-4 overflow-hidden"
-                  >
-                    {/* Full Name */}
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <User className="h-5 w-5 text-emerald-300/70" />
-                      </div>
-                      <input
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        type="text"
-                        placeholder="Full Name"
-                        className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                      />
-                    </div>
-
-                    {/* Email (Moved up for signup) */}
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-emerald-300/70" />
-                      </div>
-                      <input
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        type="email"
-                        placeholder="Email Address"
-                        className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                      />
-                    </div>
-
-                    {/* Phone & Role (Side by Side) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Phone className="h-5 w-5 text-emerald-300/70" />
-                        </div>
-                        <input
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          type="tel"
-                          placeholder="Phone Number"
-                          className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                        />
-                      </div>
-                      
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Briefcase className="h-5 w-5 text-emerald-300/70" />
-                        </div>
-                        <select
-                          name="role"
-                          value={formData.role}
-                          onChange={handleInputChange}
-                          className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70 appearance-none"
-                        >
-                          <option value="tenant" className="bg-slate-900">Tenant</option>
-                          <option value="landlord" className="bg-slate-900">Landlord</option>
-                        </select>
-                        {/* Custom Arrow */}
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Profile Image URL */}
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <ImageIcon className="h-5 w-5 text-emerald-300/70" />
-                      </div>
-                      <input
-                        name="profileImage"
-                        value={formData.profileImage}
-                        onChange={handleInputChange}
-                        type="text"
-                        placeholder="Profile Image URL (Optional)"
-                        className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* --- LOGIN FIELDS (Only show email here if Login mode) --- */}
-              {isLogin && (
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className={`h-5 w-5 transition-colors ${focusedInput === 'email' ? 'text-emerald-400' : 'text-emerald-300/50'}`} />
-                  </div>
-                  <input
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    type="email"
-                    onFocus={() => setFocusedInput('email')}
-                    onBlur={() => setFocusedInput(null)}
-                    placeholder="Email address"
-                    className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                  />
+          {/* Messages */}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }} 
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-300 text-xs text-center font-medium">
+                  {error}
                 </div>
-              )}
+              </motion.div>
+            )}
+            {successMessage && (
+               <motion.div 
+               initial={{ opacity: 0, height: 0 }} 
+               animate={{ opacity: 1, height: 'auto' }} 
+               exit={{ opacity: 0, height: 0 }}
+               className="mb-4 overflow-hidden"
+             >
+                <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-300 text-xs text-center font-medium">
+                  {successMessage}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* --- PASSWORD FIELDS (Shared but Layout Changes) --- */}
-              <div className={`grid gap-4 ${!isLogin ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
-                
-                {/* Password */}
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className={`h-5 w-5 transition-colors ${focusedInput === 'password' ? 'text-emerald-400' : 'text-emerald-300/50'}`} />
+          <form onSubmit={handleAuth} className="space-y-4">
+            
+            {/* 1. SIGNUP DETAILS (Name, Phone, Role, Image) */}
+            {/* ✅ FIXED: Added 'p-1' to prevent clipping of focus border */}
+            <AnimatePresence>
+              {authMode === 'signup' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-4 overflow-hidden p-1" 
+                >
+                  <input name="name" placeholder="Full Name" value={formData.name} onChange={handleInputChange} className="input-field" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <input name="phone" placeholder="Phone" value={formData.phone} onChange={handleInputChange} className="input-field" />
+                    <select name="role" value={formData.role} onChange={handleInputChange} className="input-field">
+                      <option value="TENANT">Tenant</option>
+                      <option value="LANDLORD">Landlord</option>
+                    </select>
                   </div>
+                  <input name="profileImage" placeholder="Profile Image URL (optional)" value={formData.profileImage} onChange={handleInputChange} className="input-field" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 2. EMAIL (Always visible) */}
+            <input
+              name="email"
+              type="email"
+              placeholder="Email Address"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              className="input-field"
+            />
+
+            {/* 3. PASSWORD (Visible in Login & Signup, Hidden in Forgot) */}
+            {/* ✅ FIXED: Added 'p-1' to prevent clipping of focus border */}
+            <AnimatePresence>
+            {authMode !== 'forgot' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden p-1"
+              >
+                <div className="relative pt-1"> 
                   <input
                     name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    type={showPassword ? 'text' : 'password'}
-                    onFocus={() => setFocusedInput('password')}
-                    onBlur={() => setFocusedInput(null)}
-                    placeholder={!isLogin ? "Password (Min 6 chars)" : "Password"}
-                    className="block w-full pl-11 pr-12 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
+                    required={authMode !== 'forgot'} 
+                    className="input-field pr-12"
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-white transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 mt-0.5 -translate-y-1/2 text-slate-400"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeOff /> : <Eye />}
                   </button>
                 </div>
+              </motion.div>
+            )}
+            </AnimatePresence>
 
-                {/* Confirm Password (Signup Only) */}
-                {!isLogin && (
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-emerald-300/70" />
-                    </div>
-                    <input
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      type="password"
-                      placeholder="Confirm Password"
-                      className="block w-full pl-11 pr-4 py-3.5 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all hover:bg-slate-900/70"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Forgot Password Link */}
-              {isLogin && (
-                <div className="flex justify-end">
-                  <a href="#" className="text-xs font-medium text-emerald-300 hover:text-emerald-200 transition-colors">
-                    Forgot password?
-                  </a>
-                </div>
-              )}
-
-              {/* Action Button */}
-              <motion.button
-                layout
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/dashboard')}
-                className="w-full py-4 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all relative overflow-hidden group mt-4"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  {isLogin ? 'Sign In' : 'Create Account'} <ArrowRight size={18} />
-                </span>
-                <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0"></div>
-              </motion.button>
-            </div>
-
-            {/* Switch Mode */}
-            <div className="mt-8 text-center">
-              <p className="text-slate-400 text-sm">
-                {isLogin ? "New to PropertyHub? " : "Already have an account? "}
-                <button 
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-white font-semibold hover:text-emerald-300 transition-colors underline decoration-emerald-500/30 underline-offset-4"
+            {/* 4. CONFIRM PASSWORD (Only for Signup, at the bottom) */}
+            {/* ✅ FIXED: Added 'p-1' here too */}
+            <AnimatePresence>
+              {authMode === 'signup' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden p-1"
                 >
-                  {isLogin ? "Create Account" : "Sign In"}
-                </button>
-              </p>
-            </div>
+                  <input 
+                    name="confirmPassword" 
+                    type="password" 
+                    placeholder="Confirm Password" 
+                    value={formData.confirmPassword} 
+                    onChange={handleInputChange} 
+                    className="input-field" 
+                  /> 
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          </div>
-          
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 opacity-80"></div>
+            {/* Forgot Password Link (Only in Login) */}
+            <AnimatePresence>
+            {authMode === 'login' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex justify-end overflow-hidden p-1" // Added p-1 just in case
+              >
+                <button 
+                  type="button"
+                  onClick={() => { setAuthMode('forgot'); setError(''); setSuccessMessage(''); }}
+                  className="text-emerald-400 text-xs hover:text-emerald-300 transition-colors pt-1"
+                >
+                  Forgot Password?
+                </button>
+              </motion.div>
+            )}
+            </AnimatePresence>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white font-bold rounded-xl flex justify-center gap-2 transition-all active:scale-95"
+            >
+              {isLoading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <>
+                  {authMode === 'login' && 'Sign In'}
+                  {authMode === 'signup' && 'Create Account'}
+                  {authMode === 'forgot' && 'Send Reset Link'}
+                  {authMode !== 'forgot' && <ArrowRight size={18} />}
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Back to Sign In (Only in Forgot) */}
+          <AnimatePresence>
+            {authMode === 'forgot' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <button
+                  onClick={() => { setAuthMode('login'); setError(''); setSuccessMessage(''); }}
+                  className="w-full mt-4 text-slate-400 text-sm flex items-center justify-center gap-2 hover:text-white transition-colors"
+                >
+                  <ArrowLeft size={14} /> Back to Sign In
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Toggle Login/Signup */}
+          <AnimatePresence>
+          {authMode !== 'forgot' && (
+             <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+             >
+                <p className="text-center text-sm text-slate-400 mt-6">
+                  {authMode === 'login' ? 'New to PropertyHub?' : 'Already have an account?'}{' '}
+                  <button
+                    onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}
+                    className="text-white underline"
+                  >
+                    {authMode === 'login' ? 'Create Account' : 'Sign In'}
+                  </button>
+                </p>
+            </motion.div>
+          )}
+          </AnimatePresence>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-          className="mt-8 flex justify-center gap-6 text-slate-400/60 text-xs font-medium"
-        >
-          <div className="flex items-center gap-1.5"><CheckCircle2 size={14} /> Enterprise Security</div>
-          <div className="flex items-center gap-1.5"><Sparkles size={14} /> AI Powered</div>
-        </motion.div>
-
+        <div className="mt-6 flex justify-center gap-6 text-slate-400 text-xs">
+          <span className="flex gap-1 items-center"><CheckCircle2 size={14} /> Enterprise Security</span>
+          <span className="flex gap-1 items-center"><Sparkles size={14} /> Reddy Powered</span>
+        </div>
       </motion.div>
+
+      <style>{`
+        .input-field {
+          width: 100%;
+          padding: 0.875rem 1rem;
+          background: rgba(15, 23, 42, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 0.75rem;
+          color: white;
+        }
+      `}</style>
     </div>
   );
 };

@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import com.property.service.AuthService;
+import java.util.Map; // Add this
 
 import jakarta.validation.Valid; // Use jakarta validation
 
@@ -50,5 +52,11 @@ public class AuthController {
         }
         UserResponse response = authService.getCurrentUser(userDetails.getUsername());
         return ResponseEntity.ok(response);
+    }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        authService.processForgotPassword(email);
+        return ResponseEntity.ok().build();
     }
 }

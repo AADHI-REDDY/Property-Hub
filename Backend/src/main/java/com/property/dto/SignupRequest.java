@@ -21,13 +21,10 @@ public class SignupRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-    // This field is used by your fixed AuthService
-    private Set<String> roles; 
+    // ✅ ADD THIS FIELD (This fixes the mismatch)
+    private String role; 
 
+    private Set<String> roles; // Keep this just in case
     private String phone;
-    
     private String profileImage;
-    
-    // Lombok @Data will automatically generate getters and setters for all fields,
-    // including getRoles(), which fixes your error in AuthService.
 }
