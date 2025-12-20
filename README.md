@@ -7,7 +7,7 @@
 ---
 
 ## 🔗 Live Demo
-### 🌐 **[Launch Application](https://property-hub-amber.vercel.app)**
+### 🌐 **[Launch Application](https://prop-frontend.vercel.app/)**
 * **Admin/Landlord Demo:** `demo@property.com` / `demo123`
 * **Tenant Demo:** *(Register a new account or use demo credentials)*
 
